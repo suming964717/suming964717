@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>仪表盘 - MeasureMaster后台</title>
+<link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root { --sidebar-w: 220px; }
+body { background: #0f0f1a; color: white; font-family: -apple-system, sans-serif; }
+.sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar-w); background: #1a1a2e; border-right: 1px solid rgba(255,255,255,0.08); padding: 20px 0; z-index: 100; }
+.sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 10px; }
+.sidebar-logo .logo-icon { font-size: 24px; }
+.sidebar-logo .logo-text { font-size: 15px; font-weight: 800; color: white; }
+.nav-item a { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: #888; text-decoration: none; font-size: 14px; transition: all 0.2s; border-radius: 0; }
+.nav-item a:hover, .nav-item a.active { color: white; background: rgba(108,99,255,0.15); border-right: 3px solid #6C63FF; }
+.nav-item .nav-icon { font-size: 18px; width: 24px; text-align: center; }
+.main { margin-left: var(--sidebar-w); padding: 24px; }
+.topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.page-title { font-size: 22px; font-weight: 800; }
+.stat-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; }
+.stat-icon { font-size: 32px; margin-bottom: 8px; }
+.stat-value { font-size: 32px; font-weight: 900; }
+.stat-label { font-size: 12px; color: #888; margin-top: 4px; }
+.stat-card.purple { border-color: rgba(108,99,255,0.3); background: rgba(108,99,255,0.08); }
+.stat-card.green  { border-color: rgba(67,233,123,0.3); background: rgba(67,233,123,0.05); }
+.stat-card.gold   { border-color: rgba(255,215,0,0.3);  background: rgba(255,215,0,0.05); }
+.stat-card.red    { border-color: rgba(255,71,87,0.3);  background: rgba(255,71,87,0.05); }
+.card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; }
+.card-header { background: transparent; border-bottom: 1px solid rgba(255,255,255,0.08); padding: 16px 20px; font-weight: 700; }
+.table { color: white; --bs-table-bg: transparent; --bs-table-striped-bg: rgba(255,255,255,0.03); }
+.table th { color: #888; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-color: rgba(255,255,255,0.08); }
+.table td { border-color: rgba(255,255,255,0.05); font-size: 14px; }
+.badge-paid { background: rgba(67,233,123,0.2); color: #43E97B; border-radius: 20px; padding: 2px 10px; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div><span class="logo-icon">📐</span> <span class="logo-text">MeasureMaster</span></div>
+    <div style="font-size:11px;color:#666;margin-top:4px;">后台管理系统</div>
+  </div>
+  <ul class="nav flex-column nav-item">
+    <li class="nav-item"><a href="/admin/index/index" class="active"><span class="nav-icon">📊</span>仪表盘</a></li>
+    <li class="nav-item"><a href="/admin/user/index"><span class="nav-icon">👥</span>用户管理</a></li>
+    <li class="nav-item"><a href="/admin/plan/index"><span class="nav-icon">💎</span>会员套餐</a></li>
+    <li class="nav-item"><a href="/admin/order/index"><span class="nav-icon">📋</span>订单管理</a></li>
+    <li class="nav-item"><a href="/admin/config/index"><span class="nav-icon">⚙️</span>系统配置</a></li>
+    <li class="nav-item" style="margin-top:auto;padding-top:20px;"><a href="/admin/index/logout"><span class="nav-icon">🚪</span>退出登录</a></li>
+  </ul>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="page-title">仪表盘</div>
+    <div style="color:#888;font-size:13px;">{:date('Y-m-d H:i')}</div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3"><div class="stat-card purple"><div class="stat-icon">👥</div><div class="stat-value">{$stats.total_users}</div><div class="stat-label">总用户数</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card green"><div class="stat-icon">👑</div><div class="stat-value">{$stats.total_members}</div><div class="stat-label">会员用户</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card gold"><div class="stat-icon">💰</div><div class="stat-value">¥{$stats.today_revenue|default=0}</div><div class="stat-label">今日收入</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card red"><div class="stat-icon">📈</div><div class="stat-value">¥{$stats.total_revenue|default=0}</div><div class="stat-label">累计收入</div></div></div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">近7天收入趋势</div>
+        <div style="padding:20px;"><canvas id="revenueChart" height="100"></canvas></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-header">今日数据</div>
+        <div style="padding:20px;">
+          <div class="d-flex justify-content-between mb-3"><span style="color:#888">今日新增用户</span><strong>{$stats.today_users}</strong></div>
+          <div class="d-flex justify-content-between mb-3"><span style="color:#888">今日订单数</span><strong>{$stats.total_orders}</strong></div>
+          <div class="d-flex justify-content-between"><span style="color:#888">测量记录总数</span><strong>{$stats.total_history}</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">最近支付订单</div>
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead><tr><th>订单号</th><th>用户</th><th>套餐</th><th>金额</th><th>支付方式</th><th>时间</th></tr></thead>
+        <tbody>
+          {volist name="recentOrders" id="o"}
+          <tr>
+            <td style="font-size:12px;font-family:monospace">{$o.order_no}</td>
+            <td>{$o.nickname}<br><small style="color:#888">{$o.mobile}</small></td>
+            <td>{$o.plan_name}</td>
+            <td><strong style="color:#43E97B">¥{$o.amount}</strong></td>
+            <td>{$o.pay_type == 1 ? '微信' : '支付宝'}</td>
+            <td style="font-size:12px">{$o.paid_at}</td>
+          </tr>
+          {/volist}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+var data = {$revenue7|raw};
+var ctx = document.getElementById('revenueChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: data.map(d => d.date.slice(5)),
+    datasets: [{
+      label: '收入(¥)', data: data.map(d => d.revenue),
+      backgroundColor: 'rgba(108,99,255,0.6)', borderRadius: 6,
+    },{
+      label: '新用户', data: data.map(d => d.users),
+      type: 'line', borderColor: '#43E97B', backgroundColor: 'transparent',
+      pointBackgroundColor: '#43E97B', tension: 0.4,
+    }]
+  },
+  options: { plugins: { legend: { labels: { color: '#888' }}}, scales: { x: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' }}, y: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' }}}}
+});
+</script>
+</body>
+</html>

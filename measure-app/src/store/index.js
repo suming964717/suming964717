@@ -1,165 +1,162 @@
-import { reactive, ref, computed } from 'vue'
+import { reactive, computed } from 'vue'
+import { authApi, userApi, memberApi, historyApi } from '../api/index.js'
 
-// ===== 全局状态管理（轻量版Pinia替代）=====
-
+// ===== 全局状态 =====
 const state = reactive({
-  // 用户信息
   user: JSON.parse(localStorage.getItem('mm_user') || 'null'),
-
-  // 当前活跃页面
   currentPage: 'home',
   previousPage: null,
-
-  // 今日使用次数
-  todayUsage: JSON.parse(localStorage.getItem('mm_usage') || '{"date":"","count":0}'),
-
-  // 测量历史记录
-  history: JSON.parse(localStorage.getItem('mm_history') || '[]'),
-
-  // Toast 提示
+  history: [],
+  plans: [],
   toast: null,
   toastTimer: null,
-
-  // 弹窗状态
   showVipModal: false,
   showLoginModal: false,
   showMemberModal: false,
+  todayUsage: 0,
+  freeLimit: 10,
+  remaining: 10,
 })
 
-// ===== 用户相关 =====
-const FREE_LIMIT = 10
-
-const isLoggedIn = computed(() => !!state.user)
-const isMember = computed(() => {
+const FREE_LIMIT  = 10
+const isLoggedIn  = computed(() => !!state.user)
+const isMember    = computed(() => {
   if (!state.user) return false
-  if (state.user.memberType === 4) return true // 永久会员
-  if (!state.user.memberExpire) return false
-  return new Date(state.user.memberExpire) > new Date()
+  if (state.user.member_type === 4) return true
+  if (!state.user.member_expire) return false
+  return new Date(state.user.member_expire) > new Date()
 })
 
-function getTodayUsage() {
-  const today = new Date().toDateString()
-  if (state.todayUsage.date !== today) {
-    state.todayUsage = { date: today, count: 0 }
-    saveTodayUsage()
+// ===== 初始化：从后端同步用户状态 =====
+async function initUser() {
+  const token = localStorage.getItem('mm_token')
+  if (!token) return
+  const res = await userApi.info()
+  if (res && res.code === 200) {
+    state.user       = res.data
+    state.todayUsage = res.data.today_usage || 0
+    state.freeLimit  = res.data.free_limit  || 10
+    state.remaining  = res.data.remaining   || 10
+    localStorage.setItem('mm_user', JSON.stringify(res.data))
+  } else {
+    logout()
   }
-  return state.todayUsage.count
 }
 
-function getRemainingUsage() {
-  if (isMember.value) return Infinity
-  return Math.max(0, FREE_LIMIT - getTodayUsage())
-}
+// ===== 使用次数 =====
+function getTodayUsage()     { return state.todayUsage }
+function getRemainingUsage() { return state.remaining }
 
-function incrementUsage() {
-  const today = new Date().toDateString()
-  if (state.todayUsage.date !== today) {
-    state.todayUsage = { date: today, count: 0 }
+async function incrementUsage(type = '') {
+  if (isMember.value) return true
+  const res = await userApi.use(type)
+  if (res && res.code === 200) {
+    state.todayUsage = res.data.today_usage
+    state.remaining  = res.data.remaining
+    return true
   }
-  state.todayUsage.count++
-  saveTodayUsage()
+  if (res && res.code === 403) {
+    state.showVipModal = true
+    showToast('今日免费次数已用完，请升级会员')
+    return false
+  }
+  return false
 }
 
 function canUse() {
   if (isMember.value) return true
-  return getRemainingUsage() > 0
+  return state.remaining > 0
 }
 
-function saveTodayUsage() {
-  localStorage.setItem('mm_usage', JSON.stringify(state.todayUsage))
-}
-
-// ===== 登录/注册 =====
-function login(data) {
-  state.user = {
-    id: Date.now(),
-    nickname: data.nickname || '测量大师',
-    mobile: data.mobile || '',
-    avatar: data.avatar || null,
-    isMember: data.isMember || false,
-    memberType: data.memberType || null,
-    memberExpire: data.memberExpire || null,
-    createdAt: new Date().toISOString()
+// ===== 发送短信 =====
+async function sendSms(mobile) {
+  const res = await authApi.sendSms(mobile)
+  if (res && res.code === 200) {
+    showToast(res.msg || '验证码已发送')
+    return { success: true, debugCode: res.data?.debug_code }
   }
-  localStorage.setItem('mm_user', JSON.stringify(state.user))
+  showToast(res?.msg || '发送失败')
+  return { success: false }
 }
 
+// ===== 登录 =====
+async function login(mobile, code) {
+  const res = await authApi.login(mobile, code)
+  if (res && res.code === 200) {
+    const { token, user } = res.data
+    localStorage.setItem('mm_token', token)
+    localStorage.setItem('mm_user', JSON.stringify(user))
+    state.user = user
+    await initUser()
+    showToast('🎉 登录成功！')
+    return true
+  }
+  showToast(res?.msg || '登录失败')
+  return false
+}
+
+// ===== 登出 =====
 function logout() {
-  state.user = null
+  state.user       = null
+  state.todayUsage = 0
+  state.remaining  = 10
+  state.history    = []
+  localStorage.removeItem('mm_token')
   localStorage.removeItem('mm_user')
 }
 
-function updateUser(updates) {
-  if (state.user) {
-    Object.assign(state.user, updates)
-    localStorage.setItem('mm_user', JSON.stringify(state.user))
-  }
+// ===== 会员套餐 =====
+async function loadPlans() {
+  const res = await memberApi.plans()
+  if (res && res.code === 200) state.plans = res.data
 }
 
-function activateMember(type) {
-  const daysMap = { 1: 30, 2: 90, 3: 365, 4: 36500 }
-  const days = daysMap[type]
-  const expire = new Date()
-  expire.setDate(expire.getDate() + days)
-
-  updateUser({
-    isMember: true,
-    memberType: type,
-    memberExpire: expire.toISOString()
-  })
-  showToast('🎉 会员开通成功！')
+function activateMember() {
+  initUser() // 支付后刷新用户状态
 }
 
 // ===== 历史记录 =====
-function saveHistory(record) {
+async function loadHistory() {
   if (!isMember.value) return
-  state.history.unshift({
-    id: Date.now(),
-    ...record,
-    time: new Date().toISOString()
-  })
-  // 只保留最近100条
-  if (state.history.length > 100) {
-    state.history = state.history.slice(0, 100)
-  }
-  localStorage.setItem('mm_history', JSON.stringify(state.history))
+  const res = await historyApi.list({ page: 1, size: 100 })
+  if (res && res.code === 200) state.history = res.data.list || []
 }
 
-function deleteHistory(id) {
+async function saveHistory(record) {
+  if (!isMember.value) return
+  await historyApi.save(record)
+  await loadHistory()
+}
+
+async function deleteHistory(id) {
+  await historyApi.delete(id)
   state.history = state.history.filter(h => h.id !== id)
-  localStorage.setItem('mm_history', JSON.stringify(state.history))
 }
 
-function clearHistory() {
+async function clearHistory() {
+  await historyApi.clear()
   state.history = []
-  localStorage.removeItem('mm_history')
 }
 
 // ===== 导航 =====
 function navigate(page) {
   state.previousPage = state.currentPage
-  state.currentPage = page
+  state.currentPage  = page
 }
 
 function goBack() {
-  if (state.previousPage) {
-    state.currentPage = state.previousPage
-    state.previousPage = null
-  } else {
-    state.currentPage = 'home'
-  }
+  state.currentPage  = state.previousPage || 'home'
+  state.previousPage = null
 }
 
 // ===== Toast =====
 function showToast(message, duration = 2000) {
   if (state.toastTimer) clearTimeout(state.toastTimer)
   state.toast = message
-  state.toastTimer = setTimeout(() => {
-    state.toast = null
-  }, duration)
+  state.toastTimer = setTimeout(() => { state.toast = null }, duration)
 }
 
-// ===== 会员弹窗 =====
+// ===== 会员拦截 =====
 function requireMember(feature) {
   if (isMember.value) return true
   state.showVipModal = true
@@ -167,24 +164,14 @@ function requireMember(feature) {
   return false
 }
 
+// 启动时初始化
+initUser()
+loadPlans()
+
 export default {
-  state,
-  isLoggedIn,
-  isMember,
-  FREE_LIMIT,
-  getTodayUsage,
-  getRemainingUsage,
-  incrementUsage,
-  canUse,
-  login,
-  logout,
-  updateUser,
-  activateMember,
-  saveHistory,
-  deleteHistory,
-  clearHistory,
-  navigate,
-  goBack,
-  showToast,
-  requireMember,
+  state, isLoggedIn, isMember, FREE_LIMIT,
+  getTodayUsage, getRemainingUsage, incrementUsage, canUse,
+  sendSms, login, logout, activateMember,
+  loadPlans, saveHistory, deleteHistory, clearHistory, loadHistory,
+  navigate, goBack, showToast, requireMember, initUser,
 }
