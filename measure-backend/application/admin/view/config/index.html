@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>系统配置 - MeasureMaster后台</title>
+<link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body { background: #0f0f1a; color: white; font-family: -apple-system, sans-serif; }
+.sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 220px; background: #1a1a2e; border-right: 1px solid rgba(255,255,255,0.08); padding: 20px 0; }
+.sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 10px; font-weight: 800; font-size: 15px; }
+.nav-item a { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: #888; text-decoration: none; font-size: 14px; transition: all 0.2s; }
+.nav-item a:hover, .nav-item a.active { color: white; background: rgba(108,99,255,0.15); border-right: 3px solid #6C63FF; }
+.main { margin-left: 220px; padding: 24px; }
+.card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; }
+.card-header { background: transparent; border-bottom: 1px solid rgba(255,255,255,0.08); font-weight: 700; }
+.form-control, .form-select { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white; border-radius: 10px; }
+.form-control:focus, .form-select:focus { background: rgba(255,255,255,0.12); border-color: #6C63FF; color: white; box-shadow: none; }
+.form-control::placeholder { color: #555; }
+.form-label { color: #ccc; font-size: 13px; font-weight: 600; }
+.form-text { color: #666; }
+.nav-tabs { border-bottom: 1px solid rgba(255,255,255,0.1); }
+.nav-tabs .nav-link { color: #888; border: none; border-bottom: 2px solid transparent; }
+.nav-tabs .nav-link.active { color: #6C63FF; border-bottom-color: #6C63FF; background: transparent; }
+.btn-save { background: linear-gradient(135deg, #6C63FF, #8B85FF); border: none; color: white; border-radius: 10px; padding: 10px 28px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="sidebar-logo">📐 MeasureMaster</div>
+  <ul class="nav flex-column nav-item">
+    <li class="nav-item"><a href="/admin/index/index">📊 仪表盘</a></li>
+    <li class="nav-item"><a href="/admin/user/index">👥 用户管理</a></li>
+    <li class="nav-item"><a href="/admin/plan/index">💎 会员套餐</a></li>
+    <li class="nav-item"><a href="/admin/order/index">📋 订单管理</a></li>
+    <li class="nav-item"><a href="/admin/config/index" class="active">⚙️ 系统配置</a></li>
+    <li class="nav-item"><a href="/admin/index/logout">🚪 退出登录</a></li>
+  </ul>
+</div>
+
+<div class="main">
+  <h4 class="mb-4" style="font-weight:800">系统配置</h4>
+
+  <ul class="nav nav-tabs mb-4">
+    {volist name="groups" id="name" key="key"}
+    <li class="nav-item"><a class="nav-link {:$group==$key?'active':''}" href="?group={$key}">{$name}</a></li>
+    {/volist}
+  </ul>
+
+  <div class="card">
+    <div class="card-header p-3">
+      {$groups[$group]}
+      <small class="text-muted ms-2">修改后点击保存生效</small>
+    </div>
+    <div class="card-body p-4">
+      <form method="post" action="/admin/config/save">
+        <input type="hidden" name="group" value="{$group}">
+
+        {if $group == 'basic'}
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">站点名称</label>
+            <input type="text" name="configs[site_name]" class="form-control" value="{$map.site_name|default='MeasureMaster'}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">免费每日次数限制</label>
+            <input type="number" name="configs[free_daily_limit]" class="form-control" value="{$map.free_daily_limit|default=10}" min="1" max="999">
+            <div class="form-text">免费用户每天最多使用次数</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">管理员账号</label>
+            <input type="text" name="configs[admin_username]" class="form-control" value="{$map.admin_username|default='admin'}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">管理员密码（留空不修改）</label>
+            <input type="password" name="configs[admin_password]" class="form-control" placeholder="输入新密码则修改">
+          </div>
+        </div>
+        {/if}
+
+        {if $group == 'sms'}
+        <div class="alert alert-info mb-3" style="background:rgba(79,195,247,0.1);border-color:rgba(79,195,247,0.3);color:#4FC3F7;border-radius:10px;">
+          💡 使用阿里云短信，需先在 <a href="https://dysms.console.aliyun.com" target="_blank" style="color:#4FC3F7">阿里云短信控制台</a> 申请签名和模板
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">AccessKeyId</label>
+            <input type="text" name="configs[aliyun_access_key]" class="form-control" value="{$map.aliyun_access_key|default=''}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">AccessKeySecret</label>
+            <input type="password" name="configs[aliyun_access_secret]" class="form-control" value="{$map.aliyun_access_secret|default=''}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">短信签名</label>
+            <input type="text" name="configs[aliyun_sms_sign]" class="form-control" value="{$map.aliyun_sms_sign|default=''}" placeholder="如：测量大师">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">登录验证码模板ID</label>
+            <input type="text" name="configs[aliyun_sms_template_login]" class="form-control" value="{$map.aliyun_sms_template_login|default=''}" placeholder="如：SMS_123456789">
+            <div class="form-text">模板内容示例：您的验证码为${"{"}code{"}"}，5分钟内有效</div>
+          </div>
+        </div>
+        {/if}
+
+        {if $group == 'payment'}
+        <div class="alert mb-3" style="background:rgba(255,215,0,0.08);border-color:rgba(255,215,0,0.3);color:#FFD700;border-radius:10px;">
+          ⚠️ 支付回调地址必须是公网可访问的HTTPS地址，本地调试无法使用真实支付
+        </div>
+        <h6 class="mb-3" style="color:#6C63FF">微信支付</h6>
+        <div class="row g-3 mb-4">
+          <div class="col-md-6"><label class="form-label">AppID</label><input type="text" name="configs[wechat_appid]" class="form-control" value="{$map.wechat_appid|default=''}"></div>
+          <div class="col-md-6"><label class="form-label">商户号(MchID)</label><input type="text" name="configs[wechat_mch_id]" class="form-control" value="{$map.wechat_mch_id|default=''}"></div>
+          <div class="col-md-6"><label class="form-label">API密钥(v2)</label><input type="password" name="configs[wechat_api_key]" class="form-control" value="{$map.wechat_api_key|default=''}"></div>
+          <div class="col-md-6"><label class="form-label">支付回调URL</label><input type="text" name="configs[wechat_notify_url]" class="form-control" value="{$map.wechat_notify_url|default=''}" placeholder="https://你的域名/api/payment/wechatNotify"></div>
+        </div>
+        <h6 class="mb-3" style="color:#1677FF">支付宝</h6>
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label">AppID</label><input type="text" name="configs[alipay_app_id]" class="form-control" value="{$map.alipay_app_id|default=''}"></div>
+          <div class="col-md-12"><label class="form-label">应用私钥</label><textarea name="configs[alipay_private_key]" class="form-control" rows="3" placeholder="粘贴支付宝应用私钥">{$map.alipay_private_key|default=''}</textarea></div>
+          <div class="col-md-12"><label class="form-label">支付宝公钥</label><textarea name="configs[alipay_public_key]" class="form-control" rows="3" placeholder="粘贴支付宝公钥">{$map.alipay_public_key|default=''}</textarea></div>
+          <div class="col-md-6"><label class="form-label">支付回调URL</label><input type="text" name="configs[alipay_notify_url]" class="form-control" value="{$map.alipay_notify_url|default=''}" placeholder="https://你的域名/api/payment/alipayNotify"></div>
+        </div>
+        {/if}
+
+        <div class="mt-4">
+          <button type="submit" class="btn btn-save">💾 保存配置</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+</body>
+</html>
