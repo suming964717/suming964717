@@ -10,6 +10,7 @@
       <span class="tab-icon">{{ tab.icon }}</span>
       <span class="tab-label">{{ tab.label }}</span>
       <span v-if="tab.key === 'user' && store.isMember.value" class="tab-vip-dot"></span>
+      <span v-if="tab.key === 'marketplace' && store.state.installedPlugins.length > 0" class="tab-count-dot">{{ store.state.installedPlugins.length }}</span>
     </div>
   </div>
 </template>
@@ -25,6 +26,7 @@ const tabs = [
   { key: 'ruler', icon: '📏', label: '尺子' },
   { key: 'level', icon: '🫧', label: '水平仪' },
   { key: 'decibel', icon: '🎙️', label: '分贝仪' },
+  { key: 'marketplace', icon: '🧩', label: '插件' },
   { key: 'user', icon: '👤', label: '我的' },
 ]
 
@@ -106,5 +108,23 @@ function navigate(key) {
   background: linear-gradient(135deg, #FFD700, #FFA500);
   border-radius: 50%;
   border: 1.5px solid rgba(12,12,22,0.97);
+}
+
+.tab-count-dot {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--primary);
+  border-radius: var(--radius-full);
+  border: 1.5px solid rgba(12,12,22,0.97);
+  font-size: 9px;
+  font-weight: 800;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

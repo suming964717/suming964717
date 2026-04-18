@@ -16,6 +16,7 @@ const state = reactive({
   todayUsage: 0,
   freeLimit: 10,
   remaining: 10,
+  installedPlugins: JSON.parse(localStorage.getItem('mm_plugins') || '[]'),
 })
 
 const FREE_LIMIT  = 10
@@ -156,6 +157,19 @@ function showToast(message, duration = 2000) {
   state.toastTimer = setTimeout(() => { state.toast = null }, duration)
 }
 
+// ===== 插件市场 =====
+function installPlugin(id) {
+  if (!state.installedPlugins.includes(id)) {
+    state.installedPlugins.push(id)
+    localStorage.setItem('mm_plugins', JSON.stringify(state.installedPlugins))
+  }
+}
+
+function uninstallPlugin(id) {
+  state.installedPlugins = state.installedPlugins.filter(p => p !== id)
+  localStorage.setItem('mm_plugins', JSON.stringify(state.installedPlugins))
+}
+
 // ===== 会员拦截 =====
 function requireMember(feature) {
   if (isMember.value) return true
@@ -174,4 +188,5 @@ export default {
   sendSms, login, logout, activateMember,
   loadPlans, saveHistory, deleteHistory, clearHistory, loadHistory,
   navigate, goBack, showToast, requireMember, initUser,
+  installPlugin, uninstallPlugin,
 }
