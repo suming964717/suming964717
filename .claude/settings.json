@@ -1,0 +1,10 @@
+{
+  "extraKnownMarketplaces": {
+    "oh-my-claude-sisyphus": {
+      "source": {
+        "source": "directory",
+        "path": "/usr/lib/node_modules/oh-my-claude-sisyphus"
+      }
+    }
+  }
+}
